@@ -53,7 +53,7 @@ public class AuthResultVerifier {
 	/**
 	 * 사용자의 DID 로 객체를 생성한다.
 	 * 
-	 * @param userDid 사용자 DID
+	 * @param userDid 사용자 DID. Auth 서버에서 전달받은 did
 	 * @throws IOException resolver 에서 did document 요청 실패 
 	 */
 	public AuthResultVerifier(String userDid) throws IOException, DidNotFoundException {
@@ -82,22 +82,23 @@ public class AuthResultVerifier {
 	
 	/**
 	 * Auth 서버에서 전달받은 signature 를 검증한다.
-	 * @param serviceId
-	 * @param state
-	 * @param code
-	 * @param type
-	 * @param data
-	 * @param signature
+	 * 
+	 * @param serviceId		발급받은 service id
+	 * @param state			인증 요청 시 생성한 state 값
+	 * @param code			Auth 서버에서 발급된 code
+	 * @param type			인증 요청 시 type
+	 * @param dataHash		인증 요청 시 data hash 값
+	 * @param signature		Auth 서버에서 전달받은 사용자 서명 값
 	 * @return 검증 결과
 	 * @throws SignatureException invalid signature
 	 */
-	public boolean verifySignaure(String serviceId, String state, String code, int type, String data, String signature) throws SignatureException {
+	public boolean verifySignaure(String serviceId, String state, String code, int type, String dataHash, String signature) throws SignatureException {
 		// make nonce
 		byte[] packed = Bytes.concat(code.getBytes(),
 				serviceId.getBytes(),
 				Numeric.toBytesPadded(BigInteger.valueOf(type), 32),
 				state.getBytes(),
-				data.getBytes(StandardCharset.UTF_8)
+				dataHash.getBytes(StandardCharset.UTF_8)
 				);
 		byte[] nonce = Hash.sha3(packed);
 		
@@ -181,10 +182,11 @@ public class AuthResultVerifier {
 	
 	/**
 	 * Auth 서버에서 전달 받은 encrypt 된 presentation 을 decryption 후 presentation, credential 을 검증한다.
-	 * @param jwePresentation
-	 * @param privateKey
-	 * @return
-	 * @throws ParseException 
+	 * <p/>
+	 * 
+	 * @param jwePresentation	Auth 서버에서 전달 받은 암호화된 VP
+	 * @param privateKey		서비스에서 생성한 RSA 개인키. 공개키는 Auth 서버에 등록.
+	 * @return 정상적인 복호화와 VP/VC 검증이 성공하면 true 를 반환
 	 */
 	public boolean extractCredentials(String jwePresentation, RSAPrivateKey privateKey) {
 		// Decrypt JWE
@@ -247,10 +249,10 @@ public class AuthResultVerifier {
 	}
 	
 	/**
-	 * 
-	 * @param issuerDid
-	 * @param credentialName
-	 * @return
+	 * 나열된 VC 들 중에 주어진 issuer 의 DID 와 credential 의 이름으로 VC를 조회한다.
+	 * @param issuerDid			조회할 issuer 의 did
+	 * @param credentialName	조회할 VC 이름
+	 * @return 조회된 VC. 조건에 맞는 VC 가 없는 경우 null 반환
 	 */
 	public VerifiableCredential findVerifiableCredential(String issuerDid, String credentialName) {
 		for (VerifiableCredential vc : vcList) {
@@ -261,6 +263,10 @@ public class AuthResultVerifier {
 		return null;
 	}
 	
+	/**
+	 * 검증된 VC 들을 얻는다.
+	 * @return VP 의 모든 VC 반환
+	 */
 	public List<VerifiableCredential> getVerifiableCredentials() {
 		return vcList;
 	}

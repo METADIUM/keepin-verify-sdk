@@ -6,6 +6,7 @@ package com.metadium.provider.sdk.utils;
 public class Bytes {
     /**
      * Concatenate several byte array
+     * 
      * @param arrays byte arrays
      * @return concatenated byte array
      */
@@ -24,7 +25,9 @@ public class Bytes {
     }
 
     /**
-     * byte array 크기를 확장한다.<br/>확장된 영역은 0 으로 채워짐
+     * byte array 크기를 확장한다.
+     * <p/>
+     * 확장된 영역은 0 으로 채워짐
      * @param src    source byte array
      * @param length 확장할 크기
      * @return 확장된 byte array

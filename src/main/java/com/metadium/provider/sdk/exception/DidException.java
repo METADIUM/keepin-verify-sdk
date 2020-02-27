@@ -1,5 +1,11 @@
 package com.metadium.provider.sdk.exception;
 
+/**
+ * DID 관련 예외
+ * 
+ * @author ybjeon
+ *
+ */
 public class DidException extends RuntimeException {
 	private static final long serialVersionUID = -4797924977225093230L;
 
