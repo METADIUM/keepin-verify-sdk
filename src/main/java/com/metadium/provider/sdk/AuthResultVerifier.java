@@ -94,10 +94,10 @@ public class AuthResultVerifier {
 	 */
 	public boolean verifySignaure(String serviceId, String state, String code, int type, String dataHash, String signature) throws SignatureException {
 		// make nonce
-		byte[] packed = Bytes.concat(code.getBytes(),
-				serviceId.getBytes(),
+		byte[] packed = Bytes.concat(code.getBytes(StandardCharset.UTF_8),
+				serviceId.getBytes(StandardCharset.UTF_8),
 				Numeric.toBytesPadded(BigInteger.valueOf(type), 32),
-				state.getBytes(),
+				state.getBytes(StandardCharset.UTF_8),
 				dataHash.getBytes(StandardCharset.UTF_8)
 				);
 		byte[] nonce = Hash.sha3(packed);
@@ -230,6 +230,9 @@ public class AuthResultVerifier {
 				
 				// Add vc
 				try {
+					if (logger.isDebugEnabled()) {
+						logger.debug("Verified raw VC={}", vcJwt.serialize());
+					}
 					VerifiableCredential vc = (VerifiableCredential)VerifiableSignedJWT.toVerifiable(vcJwt);
 					vcList.add(vc);
 					if (logger.isDebugEnabled()) {
