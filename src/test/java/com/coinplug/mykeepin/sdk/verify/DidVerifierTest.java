@@ -1,4 +1,4 @@
-package com.metadium.provider.sdk;
+package com.coinplug.mykeepin.sdk.verify;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
@@ -28,9 +28,9 @@ import org.junit.Test;
 import org.web3j.crypto.ECKeyPair;
 import org.web3j.crypto.Sign;
 
-import com.metadium.provider.sdk.exception.DidNotFoundException;
-import com.metadium.provider.sdk.utils.Bytes;
-import com.metadium.provider.sdk.utils.Hash;
+import com.coinplug.mykeepin.sdk.verify.exception.DidNotFoundException;
+import com.coinplug.mykeepin.utils.Bytes;
+import com.coinplug.mykeepin.utils.Hash;
 import com.metadium.vc.VerifiableCredential;
 import com.metadium.vc.VerifiablePresentation;
 import com.metadium.vc.VerifiableSignedJWT;
@@ -48,7 +48,7 @@ import com.nimbusds.jose.crypto.RSAEncrypter;
 import com.nimbusds.jose.util.StandardCharset;
 import com.nimbusds.jwt.SignedJWT;
 
-public class AuthResultVerifierTest {
+public class DidVerifierTest {
 	
     private static final String ISSUER_DID = "did:meta:testnet:0000000000000000000000000000000000000000000000000000000000000382";
     private static final String ISSUER_KID = "did:meta:testnet:0000000000000000000000000000000000000000000000000000000000000382#MetaManagementKey#59ddc27f5bc6983458eac013b1e771d11c908683";
@@ -58,7 +58,7 @@ public class AuthResultVerifierTest {
     private static final String ISSUER2_DID = "did:meta:testnet:00000000000000000000000000000000000000000000000000000000000009b5";
     private static final String ISSUER2_KID = "did:meta:testnet:00000000000000000000000000000000000000000000000000000000000009b5#MetaManagementKey#79d8090bf6c5af769307b0d6b39014daa5e295a4";
     private static final BigInteger ISSUER2_PRIVATE_KEY_BIG_INT = new BigInteger("daf1acfb6f0a049bf4e1166140a86d8254b53ebca0f22cc25d9ca452d8162249", 16);
-    private static final ECPrivateKey ISSUER2_PRIVATE_KEY = ECKeyUtils.toECPrivateKey(ISSUER_PRIVATE_KEY_BIG_INT, "secp256k1");
+    private static final ECPrivateKey ISSUER2_PRIVATE_KEY = ECKeyUtils.toECPrivateKey(ISSUER2_PRIVATE_KEY_BIG_INT, "secp256k1");
 
     private static final String USER_DID = "did:meta:testnet:000000000000000000000000000000000000000000000000000000000000054b";
     private static final String USER_KID = "did:meta:testnet:000000000000000000000000000000000000000000000000000000000000054b#MetaManagementKey#cfd31afff25b2260ea15ef59f2d5d7dfe8c13511";
@@ -69,7 +69,7 @@ public class AuthResultVerifierTest {
     private static final String USER2_DID = "did:meta:testnet:00000000000000000000000000000000000000000000000000000000000009b4";
     private static final String USER2_KID = "did:meta:testnet:00000000000000000000000000000000000000000000000000000000000009b4#MetaManagementKey#91c511c721c29f8ea9e9e1f3a2602885425662ba";
     private static final BigInteger USER2_PRIVATE_KEY_BIG_INT = new BigInteger("477cdbbe5a3774758e832ed99a3d91a5790090942d73a619aa6b223c4be014f5", 16);
-    private static final ECPrivateKey USER2_PRIVATE_KEY = ECKeyUtils.toECPrivateKey(USER_PRIVATE_KEY_BIG_INT, "secp256k1");
+    private static final ECPrivateKey USER2_PRIVATE_KEY = ECKeyUtils.toECPrivateKey(USER2_PRIVATE_KEY_BIG_INT, "secp256k1");
 
     static {
     	DIDResolverAPI.setDebug(false);
@@ -166,10 +166,11 @@ public class AuthResultVerifierTest {
         String signature = org.web3j.utils.Numeric.toHexString(buffer.array());
 
 		// Verify test
-		AuthResultVerifier verifier = new AuthResultVerifier(USER_DID);
-		assertTrue(verifier.verifySignaure(serviceId, state, code, type, data, signature));
+		DidVerifier verifier = new DidVerifier(USER_DID);
+		assertTrue(verifier.verifySignaureForAuth(serviceId, state, code, type, data, signature));
 	}
 	
+	@SuppressWarnings("unchecked")
 	@Test
 	public void testVpVerify() throws NoSuchAlgorithmException, JOSEException, DidNotFoundException, IOException {
 		//issuer1 rsakey
@@ -180,8 +181,19 @@ public class AuthResultVerifierTest {
 		
 		String encryptedVP = issueVP(USER_DID, USER_KID, USER_PRIVATE_KEY, ISSUER_DID, ISSUER_KID, ISSUER_PRIVATE_KEY, (RSAPublicKey)keyPair.getPublic());
 		
-		AuthResultVerifier verifier = new AuthResultVerifier(USER_DID);
-		assertTrue(verifier.extractCredentials(encryptedVP, (RSAPrivateKey)keyPair.getPrivate()));
+		com.nimbusds.jose.jwk.RSAKey jwk = new com.nimbusds.jose.jwk.RSAKey.Builder((RSAPublicKey)keyPair.getPublic()).privateKey(keyPair.getPrivate()).build();
+		com.nimbusds.jose.jwk.RSAKey jwk2 = new com.nimbusds.jose.jwk.RSAKey.Builder((RSAPublicKey)keyPair.getPublic()).build();
+		
+		System.out.println("jwk="+jwk.toJSONString());
+		System.out.println("jwk2="+jwk2.toJSONString());
+		System.out.println("user="+USER_DID);
+		System.out.println("issuer="+ISSUER_DID);
+		System.out.println("evp="+encryptedVP);
+		
+		
+		
+		DidVerifier verifier = new DidVerifier(USER_DID);
+		assertTrue(verifier.extractCredentialsFromEncrytPresentation(encryptedVP, (RSAPrivateKey)keyPair.getPrivate()));
 		
 		VerifiableCredential resVc1 = verifier.findVerifiableCredential(ISSUER_DID, "NameCredential");
 		VerifiableCredential resVc2 = verifier.findVerifiableCredential(ISSUER_DID, "BirthOfDateCredential");
@@ -196,15 +208,15 @@ public class AuthResultVerifierTest {
 		assertNull(verifier.findVerifiableCredential(ISSUER2_DID, "BirthOfDateCredential"));
 
 		// other did
-		AuthResultVerifier verifier2 = new AuthResultVerifier(USER2_DID);
-		assertFalse(verifier2.extractCredentials(encryptedVP, (RSAPrivateKey)keyPair.getPrivate()));
+		DidVerifier verifier2 = new DidVerifier(USER2_DID);
+		assertFalse(verifier2.extractCredentialsFromEncrytPresentation(encryptedVP, (RSAPrivateKey)keyPair.getPrivate()));
 		
 		// other public key
-		assertFalse(verifier.extractCredentials(encryptedVP, (RSAPrivateKey)keyPair2.getPrivate()));
+		assertFalse(verifier.extractCredentialsFromEncrytPresentation(encryptedVP, (RSAPrivateKey)keyPair2.getPrivate()));
 
 		// invalid did
 		try {
-			new AuthResultVerifier("did:meta:testnet:0000000000000000000000000000000000000000000000000000000000007382");
+			new DidVerifier("did:meta:testnet:0000000000000000000000000000000000000000000000000000000000007382");
 			assertTrue(false);
 		}
 		catch (DidNotFoundException e) {

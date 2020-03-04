@@ -1,4 +1,4 @@
-package com.metadium.provider.sdk.utils;
+package com.coinplug.mykeepin.utils;
 
 /**
  * Byte array utility

@@ -1,4 +1,4 @@
-package com.metadium.provider.sdk.exception;
+package com.coinplug.mykeepin.sdk.verify.exception;
 
 /**
  * DID 가 존재하지 않을 때의 예외

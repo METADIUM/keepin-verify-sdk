@@ -1,4 +1,4 @@
-package com.metadium.provider.sdk;
+package com.coinplug.mykeepin.sdk.verify;
 
 import java.io.IOException;
 import java.math.BigInteger;
@@ -14,9 +14,9 @@ import java.util.Map;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.metadium.provider.sdk.exception.DidNotFoundException;
-import com.metadium.provider.sdk.utils.Bytes;
-import com.metadium.provider.sdk.utils.Hash;
+import com.coinplug.mykeepin.sdk.verify.exception.DidNotFoundException;
+import com.coinplug.mykeepin.utils.Bytes;
+import com.coinplug.mykeepin.utils.Hash;
 import com.metadium.vc.VerifiableCredential;
 import com.metadium.vc.VerifiablePresentation;
 import com.metadium.vc.VerifiableSignedJWT;
@@ -41,8 +41,8 @@ import com.nimbusds.jwt.SignedJWT;
  * @author ybjeon
  *
  */
-public class AuthResultVerifier {
-	private final Logger logger = LoggerFactory.getLogger(AuthResultVerifier.class);
+public class DidVerifier {
+	private final Logger logger = LoggerFactory.getLogger(DidVerifier.class);
 	
 	private DidDocument userDidDocument;
 	
@@ -56,7 +56,7 @@ public class AuthResultVerifier {
 	 * @param userDid 사용자 DID. Auth 서버에서 전달받은 did
 	 * @throws IOException resolver 에서 did document 요청 실패 
 	 */
-	public AuthResultVerifier(String userDid) throws IOException, DidNotFoundException {
+	public DidVerifier(String userDid) throws IOException, DidNotFoundException {
 		userDidDocument = getDidDocument(userDid);
 
 		if (logger.isDebugEnabled()) {
@@ -81,7 +81,7 @@ public class AuthResultVerifier {
 	}
 	
 	/**
-	 * Auth 서버에서 전달받은 signature 를 검증한다.
+	 * Auth 서버에서 전달받은 DID 의 signature 를 검증한다.
 	 * 
 	 * @param serviceId		발급받은 service id
 	 * @param state			인증 요청 시 생성한 state 값
@@ -92,7 +92,7 @@ public class AuthResultVerifier {
 	 * @return 검증 결과
 	 * @throws SignatureException invalid signature
 	 */
-	public boolean verifySignaure(String serviceId, String state, String code, int type, String dataHash, String signature) throws SignatureException {
+	public boolean verifySignaureForAuth(String serviceId, String state, String code, int type, String dataHash, String signature) {
 		// make nonce
 		byte[] packed = Bytes.concat(code.getBytes(StandardCharset.UTF_8),
 				serviceId.getBytes(StandardCharset.UTF_8),
@@ -102,6 +102,17 @@ public class AuthResultVerifier {
 				);
 		byte[] nonce = Hash.sha3(packed);
 		
+		return verifySignature(nonce, signature);
+	}
+	
+	/**
+	 * DID 로 서명한 signature 를 검증한다.
+	 * 
+	 * @param nonce			서명한 데이터
+	 * @param signature		서명 값. hexstring of R+S+V
+	 * @return
+	 */
+	public boolean verifySignature(byte[] nonce, String signature) {
 		// ec-recover 후 address 가 사용자의 did document 에 있는지 확인한다.
 		try {
 			String address = Signature.addressFromSignature(nonce, signature);
@@ -113,7 +124,10 @@ public class AuthResultVerifier {
 			return userDidDocument.hasPublicKeyWithAddress(address);
 		}
 		catch (SignatureException e) {
-			throw e;
+			if (logger.isDebugEnabled()) {
+				logger.warn("Ec-recover failed", e);
+			}
+			return false;
 		}
 	}
 	
@@ -181,26 +195,16 @@ public class AuthResultVerifier {
 	}
 	
 	/**
-	 * Auth 서버에서 전달 받은 encrypt 된 presentation 을 decryption 후 presentation, credential 을 검증한다.
+	 * presentation, credential 을 검증하고 credential을 객체에 저장한다.
 	 * <p/>
+	 * 저장된 credential 은 {@link #findVerifiableCredential(String, String)}, {@link #getVerifiableCredentials()} 를 사용하여 가져올 수 있다.
 	 * 
-	 * @param jwePresentation	Auth 서버에서 전달 받은 암호화된 VP
-	 * @param privateKey		서비스에서 생성한 RSA 개인키. 공개키는 Auth 서버에 등록.
+	 * @param signedPresentation		서명된 VP.(JWS)
 	 * @return 정상적인 복호화와 VP/VC 검증이 성공하면 true 를 반환
 	 */
-	public boolean extractCredentials(String jwePresentation, RSAPrivateKey privateKey) {
-		// Decrypt JWE
-		JWEObject jwe = decryptJWE(jwePresentation, privateKey);
-		if (jwe == null) {
-			return false;
-		}
-		if (logger.isDebugEnabled()) {
-			logger.debug("JWE decrypted alg={}, enc={}", jwe.getHeader().getAlgorithm().toString(), jwe.getHeader().getEncryptionMethod().toString());
-		}
-
-		
+	public boolean extractCredentialsFromPresentation(String signedPresentation) {
 		// Verify signed verifiable presentation
-		SignedJWT jwt = verifyJWS(jwe.getPayload().toString(), userDidDocument);
+		SignedJWT jwt = verifyJWS(signedPresentation, userDidDocument);
 		if (jwt == null) {
 			return false;
 		}
@@ -234,6 +238,7 @@ public class AuthResultVerifier {
 						logger.debug("Verified raw VC={}", vcJwt.serialize());
 					}
 					VerifiableCredential vc = (VerifiableCredential)VerifiableSignedJWT.toVerifiable(vcJwt);
+					
 					vcList.add(vc);
 					if (logger.isDebugEnabled()) {
 						logger.debug("Verified VC types={}, issuer={}", vc.getTypes(), vc.getIssuer().toString());
@@ -249,6 +254,28 @@ public class AuthResultVerifier {
 		}
 		
 		return true;
+	}
+	
+	/**
+	 * Auth 서버에서 전달 받은 encrypt 된 presentation 을 decryption 후 presentation, credential 을 검증하고 객체에 저장한다.
+	 * <p/>
+	 * 저장된 credential 은 {@link #findVerifiableCredential(String, String)}, {@link #getVerifiableCredentials()} 를 사용하여 가져올 수 있다.
+	 * 
+	 * @param encryptPresentation	Auth 서버에서 전달 받은 암호화된 VP
+	 * @param privateKey		서비스에서 생성한 RSA 개인키. 공개키는 Auth 서버에 등록.
+	 * @return 정상적인 복호화와 VP/VC 검증이 성공하면 true 를 반환
+	 */
+	public boolean extractCredentialsFromEncrytPresentation(String encryptPresentation, RSAPrivateKey privateKey) {
+		// Decrypt JWE
+		JWEObject jwe = decryptJWE(encryptPresentation, privateKey);
+		if (jwe == null) {
+			return false;
+		}
+		if (logger.isDebugEnabled()) {
+			logger.debug("JWE decrypted alg={}, enc={}", jwe.getHeader().getAlgorithm().toString(), jwe.getHeader().getEncryptionMethod().toString());
+		}
+
+		return extractCredentialsFromPresentation(jwe.getPayload().toString());
 	}
 	
 	/**
