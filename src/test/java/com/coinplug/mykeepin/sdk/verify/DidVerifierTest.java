@@ -36,7 +36,6 @@ import com.metadium.vc.VerifiablePresentation;
 import com.metadium.vc.VerifiableSignedJWT;
 import com.metadium.vc.util.ECKeyUtils;
 import com.metadium.vc.util.Numeric;
-import com.metaidum.did.resolver.client.DIDResolverAPI;
 import com.nimbusds.jose.EncryptionMethod;
 import com.nimbusds.jose.JOSEException;
 import com.nimbusds.jose.JWEAlgorithm;
@@ -72,7 +71,6 @@ public class DidVerifierTest {
     private static final ECPrivateKey USER2_PRIVATE_KEY = ECKeyUtils.toECPrivateKey(USER2_PRIVATE_KEY_BIG_INT, "secp256k1");
 
     static {
-    	DIDResolverAPI.setDebug(false);
     	System.setProperty(org.slf4j.impl.SimpleLogger.DEFAULT_LOG_LEVEL_KEY, "DEBUG");
     }
     
