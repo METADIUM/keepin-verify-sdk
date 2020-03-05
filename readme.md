@@ -21,6 +21,17 @@ Maven
 
 ```
 
+### Logging
+
+Logging use slf4j.
+
+```xml
+<!-- logback.xml -->
+<logger name="com.coinplug.mykeepin.sdk.verify" level="DEBUG" additivity ="false">
+	<appender-ref ref="console" />
+</logger>
+```
+
 ### Auth 서버에서 전달받은 서명검증 및 VC 확인
 
 ```java
