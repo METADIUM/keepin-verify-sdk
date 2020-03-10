@@ -46,24 +46,37 @@ Logging use slf4j.
 </logger>
 ```
 
+### Rsa key 준비
+
+[nimbus-jose-java](https://connect2id.com/products/nimbus-jose-jwt) 라이브러리 필요.  
+
+```java
+// Generate RSA Key. 2048 bit 이상만 지원
+RSAKey jwk = new RSAKeyGenerator(2048).generate();
+String rsaJwk = jwk.toJSONString();							// SP 서버에서 사용할 Private Key
+String rsaPublicJwk = jwk.toPublicJWK().toJSONString();	// 관리자에 등록한 Public Key 
+
+// Load RSA key
+RSAKey key = (RSAKey)JWK.parse(rsaJwk);
+```
+
 ### Auth 서버에서 전달받은 서명검증 및 VC 확인
 
 ```java
 // 미리 설정된 값
 String serviceId = "";                  // 발급된 service id
-RSAPrivateKey privateKey = getPriKey(); // Auth 서버에 등록한 RSA 키의 개인키
+RSAPrivateKey privateKey = getPriKey(); // Auth 서버에 등록한 RSA 개인키
 
 // 서버에 생성한 값 설정
 String state = "";    // 인증 요청하기 위해 생성한 state
-int type = "";        // 인증 요청 타입
+int type = "";        // 인증 요청한 타입
 String dataHash = ""; // 인증 요청한 data의 hash값
 
 // 앱에서 전달 받은 code 값 설정
 String code = ""; // 인증 초기화 후 Auth 서버에서 발급한 code 값
 
-// Auth 서버에 serviceId, state, code 로 인증 결과 데이터 요청한다. (/didauth/verify/{service_id}/{state}/{code})
-
-// Auth 서버에서 전달 받은 값 설정
+// Auth 서버에 serviceId, state, code 로 인증 결과 데이터 요청하여 did, signature, vp 를 얻는다.
+// 요청 URL : https://testauth.metadium.com/didauth/v1/verify/${serviceId}/${state+}/${code}
 String did = "";
 String signature = "";
 String vp = "";
@@ -122,5 +135,17 @@ if (verifier.extractCredentialsFromPresentation(receiveVP)) {
 	
 	String name = subject.get("name");
 }
+
+// 새로운 VC 생성
+VerifiableCredential newVC = new VerifiableCredential();
+newVC.setId(URI.create("http://aa.metadium.com/credential/343"));  	// VC 의 ID. URL 로 VC의 유효성을 해당 URL 로 확인할 수 있어야 함.
+newVC.addTypes(Collections.singletonList("NameCredential"));       	// AA 에서 정의한 VC 이름. 관리자에도 등록 되어 있어야 함
+newVC.setIssuer(URI.create("did:meta:0x3489384932859420"));        	// AA 의 DID
+newVC.setIssuanceDate(issuedDate);                                 	// VC 발급일
+newVC.setExpirationDate(expireDate);                             		// VC 만료일
+LinkedHashMap<String, String> subject = new LinkedHashMap<>();
+subject.put("id", "did:meta:0x11111111120");                        // VC 소유자의 DID 
+subject.put("name", "mansud");                                      // VC subject 
+newVC.setCredentialSubject(subject);
 
 ```
