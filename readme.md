@@ -8,17 +8,31 @@
 
 ### SDK 추가
 
-Gradle
+##### Maven repository 설정 <= maven central 에 deploy 전 까지 임시로 사용
+
+[라이브러리](https://bitbucket.org/coinplugin/mykeepin-verify-sdk/downloads/mykeepin-verify-sdk-0.2.0.zip) 다운로드 후 ~/.m2/com/coinplug/mykeepin-verify-sdk/0.2.0 디렉토리에 압축 해제
+
+
+##### Gradle
 
 ```gradle
-
-
+// build.gradle
+dependencies {
+	implementation 'com.coinplug:mykeepin-verify-sdk:0.2.0'
+}
 ```
 
-Maven
+#####Maven
+
+아래설정 pom.xml 에 추가
 
 ```xml
-
+<!-- pom.xml -->
+<dependency>
+	<groupId>com.coinplug</groupId>
+	<artifactId>mykeepin-verify-sdk</artifactId>
+	<version>0.2.0</version>
+</dependency>
 ```
 
 ### Logging
@@ -64,7 +78,7 @@ if (!verifier.verifySignaure(serviceId, state, code, type, dataHash, signature))
 }
 
 // 전달 받은 VP 를 확인이 필요한 경우 VP 복호화 몇 VP/VC 검증 
-if (verifier.extractCredentialsFromEncrytPresentation(vp, privateKey)) {
+if (verifier.extractCredentialsFromEncryptPresentation(vp, privateKey)) {
 	// 지정한 issuer 와 credential 이름으로 VC 조회. 전체 credential 은 getVerifiableCredentials() 사용.
 	String didOfRequiredAA = "did:meta:0x.....";
 	VerifiableCredential vc1 = verifier.findVerifiableCredential(didOfRequiredAA, "NameCredential");

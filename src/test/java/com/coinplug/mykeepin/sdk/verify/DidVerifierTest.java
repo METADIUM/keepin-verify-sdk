@@ -114,48 +114,36 @@ public class DidVerifierTest {
 		return jwe.serialize();
     }
     
-    private byte[] generateNonce(String serviceId, String state, String code, int type, String data) {
-		byte[] packed = Bytes.concat(code.getBytes(),
-				serviceId.getBytes(),
+    private String generateNonce(String serviceId, String state, String code, int type, String data) {
+		byte[] packed = Bytes.concat(code.getBytes(StandardCharset.UTF_8),
+				serviceId.getBytes(StandardCharset.UTF_8),
 				Numeric.toBytesPadded(BigInteger.valueOf(type), 32),
-				state.getBytes()
+				state.getBytes(StandardCharset.UTF_8),
+				data.getBytes(StandardCharset.UTF_8)
 				);
-		if (data != null) {
-			packed = Bytes.concat(packed, data.getBytes(StandardCharset.UTF_8));
-		}
-		return Hash.sha3(packed);
+		byte[] nonce = Hash.sha3(packed);
+
+		return Hex.toHexString(nonce);
     }
     
-	@Test
-	public void testNonce() {
-		byte[] nonce = generateNonce("f7c5b186-41b9-11ea-ab1a-0a0f3ad235f2",
-				"9268a74d-bcdd-402d-9e50-3be6e946154b",
-				"8a42c9c1-1536-4794-83d8-78ab31d973a4",
-				0,
-				null);		
-		assertEquals("ac3f539fd773266ea3052e1c81380242b209df42a7a6de46434d560f2e32d50b", Hex.toHexString(nonce));
-
-		nonce = generateNonce("f7c5b186-41b9-11ea-ab1a-0a0f3ad235f2",
-				"96020727-ca11-4559-b018-5cf906b817f1",
-				"741908fd-6173-4be2-b42b-30dcde72bfb3",
-				0,
-				"ac3f539fd773266ea3052e1c81380242b209df42a7a6de46434d560f2e32d50b");
-		assertEquals("7b6e549d1c96ce5b3abaf74e92232861687e8435882b8227b91f665097d12e12", Hex.toHexString(nonce));
-	}
     
     
 	@Test
 	public void testVerify() throws DidNotFoundException, IOException, SignatureException {
-		String serviceId = "testSp";
-		String state = UUID.randomUUID().toString();
-		String code = UUID.randomUUID().toString();
-		int type = 5;
-		String data = UUID.randomUUID().toString();
+		String serviceId = "f7c5b186-41b9-11ea-ab1a-0a0f3ad235f2";
+		String state = "9017935a-1127-465c-afcf-9b2a3ba22157";
+		String code = "8deaef00-3bc2-4420-b1c2-07b01f00142d";
+		int type = 0;
+		String data = "6B88E30E8540E421FC613B2F0BD0B070F6B3D018DDB79E011135049FBEE881F1";
+		
+		String orgNonce = "240a4df912798871f5d70a17ef7a654ca91ce232633d66bd1a26de961d9f12f4";
 
-		byte[] nonce = generateNonce(serviceId, state, code, type, data);
+		String nonce = generateNonce(serviceId, state, code, type, data);
+		
+		assertEquals(orgNonce, nonce);
 		
 		// make signature
-		Sign.SignatureData signData = Sign.signMessage(nonce, ECKeyPair.create(USER_PRIVATE_KEY_BIG_INT));
+		Sign.SignatureData signData = Sign.signMessage(nonce.getBytes(StandardCharset.UTF_8), ECKeyPair.create(USER_PRIVATE_KEY_BIG_INT));
         ByteBuffer buffer = ByteBuffer.allocate(65);
         buffer.put(signData.getR());
         buffer.put(signData.getS());
@@ -191,7 +179,7 @@ public class DidVerifierTest {
 		
 		
 		DidVerifier verifier = new DidVerifier(USER_DID);
-		assertTrue(verifier.extractCredentialsFromEncrytPresentation(encryptedVP, (RSAPrivateKey)keyPair.getPrivate()));
+		assertTrue(verifier.extractCredentialsFromEncryptPresentation(encryptedVP, (RSAPrivateKey)keyPair.getPrivate()));
 		
 		VerifiableCredential resVc1 = verifier.findVerifiableCredential(ISSUER_DID, "NameCredential");
 		VerifiableCredential resVc2 = verifier.findVerifiableCredential(ISSUER_DID, "BirthOfDateCredential");
@@ -207,10 +195,10 @@ public class DidVerifierTest {
 
 		// other did
 		DidVerifier verifier2 = new DidVerifier(USER2_DID);
-		assertFalse(verifier2.extractCredentialsFromEncrytPresentation(encryptedVP, (RSAPrivateKey)keyPair.getPrivate()));
+		assertFalse(verifier2.extractCredentialsFromEncryptPresentation(encryptedVP, (RSAPrivateKey)keyPair.getPrivate()));
 		
 		// other public key
-		assertFalse(verifier.extractCredentialsFromEncrytPresentation(encryptedVP, (RSAPrivateKey)keyPair2.getPrivate()));
+		assertFalse(verifier.extractCredentialsFromEncryptPresentation(encryptedVP, (RSAPrivateKey)keyPair2.getPrivate()));
 
 		// invalid did
 		try {

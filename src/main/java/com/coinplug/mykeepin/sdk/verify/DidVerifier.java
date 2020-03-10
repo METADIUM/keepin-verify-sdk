@@ -97,12 +97,17 @@ public class DidVerifier {
 		byte[] packed = Bytes.concat(code.getBytes(StandardCharset.UTF_8),
 				serviceId.getBytes(StandardCharset.UTF_8),
 				Numeric.toBytesPadded(BigInteger.valueOf(type), 32),
-				state.getBytes(StandardCharset.UTF_8),
-				dataHash.getBytes(StandardCharset.UTF_8)
+				state.getBytes(StandardCharset.UTF_8)
 				);
+		
+		if (dataHash != null) {
+			packed = Bytes.concat(packed, dataHash.getBytes(StandardCharset.UTF_8));
+		}
+		
 		byte[] nonce = Hash.sha3(packed);
 		
-		return verifySignature(nonce, signature);
+		
+		return verifySignature(Hex.toHexString(nonce).getBytes(StandardCharset.UTF_8), signature);
 	}
 	
 	/**
@@ -265,7 +270,7 @@ public class DidVerifier {
 	 * @param privateKey		서비스에서 생성한 RSA 개인키. 공개키는 Auth 서버에 등록.
 	 * @return 정상적인 복호화와 VP/VC 검증이 성공하면 true 를 반환
 	 */
-	public boolean extractCredentialsFromEncrytPresentation(String encryptPresentation, RSAPrivateKey privateKey) {
+	public boolean extractCredentialsFromEncryptPresentation(String encryptPresentation, RSAPrivateKey privateKey) {
 		// Decrypt JWE
 		JWEObject jwe = decryptJWE(encryptPresentation, privateKey);
 		if (jwe == null) {
