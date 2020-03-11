@@ -22,7 +22,7 @@ dependencies {
 }
 ```
 
-#####Maven
+##### Maven
 
 아래설정 pom.xml 에 추가
 
@@ -53,8 +53,8 @@ Logging use slf4j.
 ```java
 // Generate RSA Key. 2048 bit 이상만 지원
 RSAKey jwk = new RSAKeyGenerator(2048).generate();
-String rsaJwk = jwk.toJSONString();							// SP 서버에서 사용할 Private Key
-String rsaPublicJwk = jwk.toPublicJWK().toJSONString();	// 관리자에 등록한 Public Key 
+String rsaJwk = jwk.toJSONString();                     // SP 서버에서 사용할 Private Key
+String rsaPublicJwk = jwk.toPublicJWK().toJSONString(); // 관리자에 등록한 Public Key 
 
 // Load RSA key
 RSAKey key = (RSAKey)JWK.parse(rsaJwk);
@@ -77,6 +77,7 @@ String code = ""; // 인증 초기화 후 Auth 서버에서 발급한 code 값
 
 // Auth 서버에 serviceId, state, code 로 인증 결과 데이터 요청하여 did, signature, vp 를 얻는다.
 // 요청 URL : https://testauth.metadium.com/didauth/v1/verify/${serviceId}/${state+}/${code}
+// https://bitbucket.org/coinplugin/meta-auth-service/src/master/auth/app/docs/api_spec.md#verify-auth-info 참조
 String did = "";
 String signature = "";
 String vp = "";
@@ -138,14 +139,14 @@ if (verifier.extractCredentialsFromPresentation(receiveVP)) {
 
 // 새로운 VC 생성
 VerifiableCredential newVC = new VerifiableCredential();
-newVC.setId(URI.create("http://aa.metadium.com/credential/343"));  	// VC 의 ID. URL 로 VC의 유효성을 해당 URL 로 확인할 수 있어야 함.
-newVC.addTypes(Collections.singletonList("NameCredential"));       	// AA 에서 정의한 VC 이름. 관리자에도 등록 되어 있어야 함
-newVC.setIssuer(URI.create("did:meta:0x3489384932859420"));        	// AA 의 DID
-newVC.setIssuanceDate(issuedDate);                                 	// VC 발급일
-newVC.setExpirationDate(expireDate);                             		// VC 만료일
+newVC.setId(URI.create("http://aa.metadium.com/credential/343"));    // VC 의 ID. URL 로 VC의 유효성을 해당 URL 로 확인할 수 있어야 함.
+newVC.addTypes(Collections.singletonList("NameCredential"));         // AA 에서 정의한 VC 이름. 관리자에도 등록 되어 있어야 함
+newVC.setIssuer(URI.create("did:meta:0x3489384932859420"));          // AA 의 DID
+newVC.setIssuanceDate(issuedDate);                                   // VC 발급일
+newVC.setExpirationDate(expireDate);                                 // VC 만료일
 LinkedHashMap<String, String> subject = new LinkedHashMap<>();
-subject.put("id", "did:meta:0x11111111120");                        // VC 소유자의 DID 
-subject.put("name", "mansud");                                      // VC subject 
+subject.put("id", "did:meta:0x11111111120");                         // VC 소유자의 DID 
+subject.put("name", "mansud");                                       // VC subject 
 newVC.setCredentialSubject(subject);
 
 ```
