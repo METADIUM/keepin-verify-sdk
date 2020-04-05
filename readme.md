@@ -10,7 +10,7 @@
 
 ##### Maven repository 설정 <= maven central 에 deploy 전 까지 임시로 사용
 
-[라이브러리](https://bitbucket.org/coinplugin/mykeepin-verify-sdk/downloads/mykeepin-verify-sdk-0.2.0.zip) 다운로드 후 ~/.m2/com/coinplug/mykeepin-verify-sdk/0.2.0 디렉토리에 압축 해제
+[라이브러리](https://bitbucket.org/coinplugin/mykeepin-verify-sdk/downloads/mykeepin-verify-sdk-0.2.1.zip) 다운로드 후 ~/.m2/com/coinplug/mykeepin-verify-sdk/0.2.1 디렉토리에 압축 해제
 
 
 ##### Gradle
@@ -18,7 +18,7 @@
 ```gradle
 // build.gradle
 dependencies {
-	implementation 'com.coinplug:mykeepin-verify-sdk:0.2.0'
+	implementation 'com.coinplug:mykeepin-verify-sdk:0.2.1'
 }
 ```
 
@@ -31,7 +31,7 @@ dependencies {
 <dependency>
 	<groupId>com.coinplug</groupId>
 	<artifactId>mykeepin-verify-sdk</artifactId>
-	<version>0.2.0</version>
+	<version>0.2.1</version>
 </dependency>
 ```
 
