@@ -31,6 +31,7 @@ import com.nimbusds.jose.JOSEException;
 import com.nimbusds.jose.JWEObject;
 import com.nimbusds.jose.crypto.ECDSAVerifier;
 import com.nimbusds.jose.crypto.RSADecrypter;
+import com.nimbusds.jose.crypto.bc.BouncyCastleProviderSingleton;
 import com.nimbusds.jose.util.StandardCharset;
 import com.nimbusds.jwt.SignedJWT;
 
@@ -187,7 +188,9 @@ public class DidVerifier {
 
 			// verify jws
 			ECPublicKey userPublicKey = (ECPublicKey)publicKeyOfIssuer.getPublicKey();
-			if (jwt.verify(new ECDSAVerifier(userPublicKey))) {
+			ECDSAVerifier verifier = new ECDSAVerifier(userPublicKey);
+			verifier.getJCAContext().setProvider(BouncyCastleProviderSingleton.getInstance());
+			if (jwt.verify(verifier)) {
 				return jwt;
 			}
 		}
