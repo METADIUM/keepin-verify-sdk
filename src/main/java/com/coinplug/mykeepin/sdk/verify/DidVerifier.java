@@ -419,7 +419,7 @@ public class DidVerifier {
 			// check claim
 			Object value = claims.get(c.claimName);
 			if (value == null) {
-				throw new CredentialException(ErrorCode.NotFoundClaim, findVc);
+				throw new CredentialException(ErrorCode.IssuerServerError, findVc);
 			}
 			
 			// check claim value

@@ -28,7 +28,7 @@ public class CredentialException extends Exception {
 	}
 
 
-	static enum ErrorCode {
+	public static enum ErrorCode {
 		NotFoundCredential,
 		ExpiredCredential,
 		NotFoundClaim,
