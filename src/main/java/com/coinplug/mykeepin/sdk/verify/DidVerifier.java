@@ -2,11 +2,14 @@ package com.coinplug.mykeepin.sdk.verify;
 
 import java.io.IOException;
 import java.math.BigInteger;
+import java.net.HttpURLConnection;
 import java.security.SignatureException;
 import java.security.interfaces.ECPublicKey;
 import java.security.interfaces.RSAPrivateKey;
 import java.text.ParseException;
 import java.util.ArrayList;
+import java.util.Collections;
+import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -14,6 +17,8 @@ import java.util.Map;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.coinplug.mykeepin.sdk.verify.CredentialException.ErrorCode;
+import com.coinplug.mykeepin.sdk.verify.PresentationInfo.CredentialInfo;
 import com.coinplug.mykeepin.sdk.verify.exception.DidNotFoundException;
 import com.coinplug.mykeepin.utils.Bytes;
 import com.coinplug.mykeepin.utils.Hash;
@@ -49,6 +54,7 @@ public class DidVerifier {
 	
 	private Map<String, DidDocument> didDocCache = new HashMap<>();
 	
+	private VerifiablePresentation vp;
 	private List<VerifiableCredential> vcList = new ArrayList<>();
 	
 	/**
@@ -207,10 +213,23 @@ public class DidVerifier {
 	 * <p/>
 	 * 저장된 credential 은 {@link #findVerifiableCredential(String, String)}, {@link #getVerifiableCredentials()} 를 사용하여 가져올 수 있다.
 	 * 
-	 * @param signedPresentation		서명된 VP.(JWS)
+	 * @param signedPresentation 서명된 VP.(JWS)
 	 * @return 정상적인 복호화와 VP/VC 검증이 성공하면 true 를 반환
+	 * @deprecated Use {@link #extract(String)}
 	 */
 	public boolean extractCredentialsFromPresentation(String signedPresentation) {
+		return extract(signedPresentation);
+	}
+	
+	/**
+	 * presentation, credential 을 검증하고 credential을 객체에 저장한다.
+	 * <p/>
+	 * 저장된 credential 은 {@link #findCredential(String, String)}, {@link #getCredentials()} 를 사용하여 가져올 수 있다.
+	 * 
+	 * @param signedPresentation 서명된 VP.(JWS)
+	 * @return 정상적인 복호화와 VP/VC 검증이 성공하면 true 를 반환
+	 */
+	public boolean extract(String signedPresentation) {
 		// Verify signed verifiable presentation
 		SignedJWT jwt = verifyJWS(signedPresentation, userDidDocument);
 		if (jwt == null) {
@@ -218,7 +237,6 @@ public class DidVerifier {
 		}
 		
 		// saved vp
-		VerifiablePresentation vp;
 		try {
 			vp = (VerifiablePresentation)VerifiableSignedJWT.toVerifiable(jwt);
 		}
@@ -272,8 +290,22 @@ public class DidVerifier {
 	 * @param encryptPresentation	Auth 서버에서 전달 받은 암호화된 VP
 	 * @param privateKey		서비스에서 생성한 RSA 개인키. 공개키는 Auth 서버에 등록.
 	 * @return 정상적인 복호화와 VP/VC 검증이 성공하면 true 를 반환
+	 * @deprecated Use {@link #extract(String, RSAPrivateKey)}
 	 */
 	public boolean extractCredentialsFromEncryptPresentation(String encryptPresentation, RSAPrivateKey privateKey) {
+		return extract(encryptPresentation, privateKey);
+	}
+	
+	/**
+	 * Auth 서버에서 전달 받은 encrypt 된 presentation 을 decryption 후 presentation, credential 을 검증하고 객체에 저장한다.
+	 * <p/>
+	 * 저장된 credential 은 {@link #findCredential(String, String)}, {@link #getCredentials()} 를 사용하여 가져올 수 있다.
+	 * 
+	 * @param encryptPresentation Auth 서버에서 전달 받은 암호화된 VP
+	 * @param privateKey          서비스에서 생성한 RSA 개인키. 공개키는 Auth 서버에 등록.
+	 * @return 정상적인 복호화와 VP/VC 검증이 성공하면 true 를 반환
+	 */
+	public boolean extract(String encryptPresentation, RSAPrivateKey privateKey) {
 		// Decrypt JWE
 		JWEObject jwe = decryptJWE(encryptPresentation, privateKey);
 		if (jwe == null) {
@@ -283,7 +315,18 @@ public class DidVerifier {
 			logger.debug("JWE decrypted alg={}, enc={}", jwe.getHeader().getAlgorithm().toString(), jwe.getHeader().getEncryptionMethod().toString());
 		}
 
-		return extractCredentialsFromPresentation(jwe.getPayload().toString());
+		return extract(jwe.getPayload().toString());
+	}
+	
+	/**
+	 * 나열된 VC 들 중에 주어진 issuer 의 DID 와 credential 의 이름으로 VC를 조회한다.
+	 * @param issuerDid			조회할 issuer 의 did
+	 * @param credentialName	조회할 VC 이름
+	 * @return 조회된 VC. 조건에 맞는 VC 가 없는 경우 null 반환
+	 * @deprecated Use {@link #findCredential(String, String)}
+	 */
+	public VerifiableCredential findVerifiableCredential(String issuerDid, String credentialName) {
+		return findCredential(issuerDid, credentialName);
 	}
 	
 	/**
@@ -292,7 +335,7 @@ public class DidVerifier {
 	 * @param credentialName	조회할 VC 이름
 	 * @return 조회된 VC. 조건에 맞는 VC 가 없는 경우 null 반환
 	 */
-	public VerifiableCredential findVerifiableCredential(String issuerDid, String credentialName) {
+	public VerifiableCredential findCredential(String issuerDid, String credentialName) {
 		for (VerifiableCredential vc : vcList) {
 			if (vc.getIssuer().toString().equals(issuerDid) && vc.getTypes().contains(credentialName)) {
 				return vc;
@@ -304,9 +347,117 @@ public class DidVerifier {
 	/**
 	 * 검증된 VC 들을 얻는다.
 	 * @return VP 의 모든 VC 반환
+	 * @deprecated Use {@link #getCredentials()}
 	 */
 	public List<VerifiableCredential> getVerifiableCredentials() {
 		return vcList;
+	}
+
+	/**
+	 * 검증된 VC 들을 얻는다.
+	 * @return VP 의 모든 VC 반환
+	 */
+	public List<VerifiableCredential> getCredentials() {
+		return vcList;
+	}
+
+	/**
+	 * 검증된 VP 들을 얻는다.
+	 * @return VP
+	 */
+	public VerifiablePresentation getPresentation() {
+		return vp;
+	}
+	
+	/**
+	 * presentation 정보로 claim 정보를 얻는다.<p/>
+	 * 필요하다면 credential 의 id 로 발행자에게 확인할 수 있다.
+	 * 
+	 * @param presentationInfo  claim 정보를 얻기 위한 presentation 정보
+	 * @param useVerifyByIssuer 발행자에게 검증을 받을지 여부. 검증받기 위해 http 통신이 필요
+	 * @return claim 정보
+	 * @throws IllegalStateException {@link #extract(String)} or {@link #extract(String, RSAPrivateKey)} 을 하지 않은 경우
+	 * @throws PresentationException 원하는 Presentation Type 이 아닌 경우 발생
+	 * @throws CredentialException   원하는 Credential 이 아니거나 유효하지 않은 경우 발생
+	 * 
+	 */
+	public List<ClaimNameValue<?>> getClaims(PresentationInfo presentationInfo, boolean useVerifyByIssuer) throws PresentationException, CredentialException, IllegalStateException {
+		if (presentationInfo == null) {
+			return Collections.emptyList();
+		}
+		if (vp == null || vcList.size() == 0) {
+			throw new IllegalStateException("Must call extract");
+		}
+		
+		// Check vp type name
+		if (!vp.getTypes().contains(presentationInfo.name)) {
+			throw new PresentationException("Presentation types not contains "+presentationInfo.name+". "+vp.getType());
+		}
+		
+		List<ClaimNameValue<?>> retValues = new ArrayList<>();
+		Date curDate = new Date();
+		
+		for (CredentialInfo c : presentationInfo.credentials) {
+			// check issuer did, vc type name
+			VerifiableCredential findVc = findCredential(c.attestatorAgencyDid, c.name);
+			if (findVc == null) {
+				throw new CredentialException(ErrorCode.NotFoundCredential, "issuerDid="+c.attestatorAgencyDid+" credentialType="+c.name);
+			}
+			
+			// check expire date
+			if (findVc.getExpriationDate() != null) {
+				if (curDate.after(findVc.getExpriationDate())) {
+					throw new CredentialException(ErrorCode.ExpiredCredential, findVc);
+				}
+			}
+			
+			@SuppressWarnings("unchecked")
+			Map<String, Object> claims = (Map<String, Object>)findVc.getCredentialSubject();
+			
+			// check claim
+			Object value = claims.get(c.claimName);
+			if (value == null) {
+				throw new CredentialException(ErrorCode.NotFoundClaim, findVc);
+			}
+			
+			// check claim value
+			if (!c.claimValueClass.isInstance(value)) {
+				throw new CredentialException(ErrorCode.MismatchClaimType, findVc);
+			}
+			
+			// check id
+			if (useVerifyByIssuer && findVc.getId() != null && findVc.getId().getScheme().startsWith("http")) {
+				HttpURLConnection conn = null;
+				try {
+					conn = (HttpURLConnection) findVc.getId().toURL().openConnection();
+					conn.connect();
+					int statusCode = conn.getResponseCode();
+					
+					
+					if (statusCode == HttpURLConnection.HTTP_NOT_FOUND) {
+						throw new CredentialException(ErrorCode.NotFoundCredential, findVc);
+					}
+					else if (statusCode == HttpURLConnection.HTTP_GONE) {
+						throw new CredentialException(ErrorCode.RevokedCredential, findVc);
+					}
+					else if (statusCode != HttpURLConnection.HTTP_OK) {
+						throw new CredentialException(ErrorCode.IssuerServerError, findVc);
+					}
+				}
+				catch (IOException e) {
+					throw new CredentialException(ErrorCode.IssuerServerError, findVc);
+				}
+				finally {
+					if (conn != null) {
+						conn.disconnect();
+					}
+				}
+			}
+			
+			retValues.add(ClaimNameValue.create(c.claimName, value));
+		}
+		
+		return retValues;
 	}
 	
 }

@@ -13,24 +13,30 @@ import java.nio.ByteBuffer;
 import java.security.KeyPair;
 import java.security.KeyPairGenerator;
 import java.security.NoSuchAlgorithmException;
+import java.security.Security;
 import java.security.SignatureException;
 import java.security.interfaces.ECPrivateKey;
 import java.security.interfaces.RSAPrivateKey;
 import java.security.interfaces.RSAPublicKey;
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Date;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
+import org.bouncycastle.jce.provider.BouncyCastleProvider;
 import org.bouncycastle.util.encoders.Hex;
 import org.junit.Test;
 import org.web3j.crypto.ECKeyPair;
 import org.web3j.crypto.Sign;
 
+import com.coinplug.mykeepin.sdk.verify.PresentationInfo.CredentialInfo;
 import com.coinplug.mykeepin.sdk.verify.exception.DidNotFoundException;
 import com.coinplug.mykeepin.utils.Bytes;
 import com.coinplug.mykeepin.utils.Hash;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.metadium.vc.VerifiableCredential;
 import com.metadium.vc.VerifiablePresentation;
 import com.metadium.vc.VerifiableSignedJWT;
@@ -71,6 +77,7 @@ public class DidVerifierTest {
     private static final ECPrivateKey USER2_PRIVATE_KEY = ECKeyUtils.toECPrivateKey(USER2_PRIVATE_KEY_BIG_INT, "secp256k1");
 
     static {
+    	Security.addProvider(new BouncyCastleProvider());
     	System.setProperty(org.slf4j.impl.SimpleLogger.DEFAULT_LOG_LEVEL_KEY, "DEBUG");
     }
     
@@ -179,10 +186,56 @@ public class DidVerifierTest {
 		
 		
 		DidVerifier verifier = new DidVerifier(USER_DID);
-		assertTrue(verifier.extractCredentialsFromEncryptPresentation(encryptedVP, (RSAPrivateKey)keyPair.getPrivate()));
+		assertTrue(verifier.extract(encryptedVP, (RSAPrivateKey)keyPair.getPrivate()));
 		
-		VerifiableCredential resVc1 = verifier.findVerifiableCredential(ISSUER_DID, "NameCredential");
-		VerifiableCredential resVc2 = verifier.findVerifiableCredential(ISSUER_DID, "BirthOfDateCredential");
+		PresentationInfo presentationInfo = new PresentationInfo();
+		presentationInfo.name = "TestPresentation";
+		List<CredentialInfo> vcList = new ArrayList<PresentationInfo.CredentialInfo>();
+		CredentialInfo nameVcInfo = new CredentialInfo();
+		nameVcInfo.attestatorAgencyDid = ISSUER_DID;
+		nameVcInfo.name = "NameCredential";
+		nameVcInfo.claimName = "name";
+		nameVcInfo.claimValueClass = String.class;
+		vcList.add(nameVcInfo);
+		CredentialInfo birthVcInfo = new CredentialInfo();
+		birthVcInfo.attestatorAgencyDid = ISSUER_DID;
+		birthVcInfo.name = "BirthOfDateCredential";
+		birthVcInfo.claimName = "birth";
+		birthVcInfo.claimValueClass = String.class;
+		vcList.add(birthVcInfo);
+		
+		presentationInfo.credentials = vcList;
+		
+		try {
+			List<ClaimNameValue<?>> claims = verifier.getClaims(presentationInfo, true);
+			
+			ClaimNameValue<String> nameClaim = (ClaimNameValue<String>) claims.get(0);
+			ClaimNameValue<String> birthClaim = (ClaimNameValue<String>) claims.get(1);
+			
+			assertEquals(nameClaim.getName(), "name");
+			assertEquals(nameClaim.getValue(), "전영배");
+			assertEquals(birthClaim.getName(), "birth");
+			assertEquals(birthClaim.getValue(), "19770206");
+
+			presentationInfo = new ObjectMapper().readValue("{\"vp\":\"TestPresentation\",\"vcs\":[{\"did\":\"did:meta:testnet:0000000000000000000000000000000000000000000000000000000000000382\",\"vc\":\"NameCredential\",\"name\":\"name\",\"type\":\"string\"},{\"did\":\"did:meta:testnet:0000000000000000000000000000000000000000000000000000000000000382\",\"vc\":\"BirthOfDateCredential\",\"name\":\"birth\",\"type\":\"string\"}]}",  PresentationInfo.class);
+			claims = verifier.getClaims(presentationInfo, true);
+			
+			nameClaim = (ClaimNameValue<String>) claims.get(0);
+			birthClaim = (ClaimNameValue<String>) claims.get(1);
+			
+			assertEquals(nameClaim.getName(), "name");
+			assertEquals(nameClaim.getValue(), "전영배");
+			assertEquals(birthClaim.getName(), "birth");
+			assertEquals(birthClaim.getValue(), "19770206");
+
+		}
+		catch (Exception e) {
+			e.printStackTrace();
+			assertTrue(false);
+		}
+		
+		VerifiableCredential resVc1 = verifier.findCredential(ISSUER_DID, "NameCredential");
+		VerifiableCredential resVc2 = verifier.findCredential(ISSUER_DID, "BirthOfDateCredential");
 		
 		assertNotNull(resVc1);
 		assertNotNull(resVc2);
@@ -190,15 +243,15 @@ public class DidVerifierTest {
 		assertEquals("19770206", ((Map<String, String>)resVc2.getCredentialSubject()).get("birth"));
 		
 		// not same issuer
-		assertNull(verifier.findVerifiableCredential(ISSUER2_DID, "NameCredential"));
-		assertNull(verifier.findVerifiableCredential(ISSUER2_DID, "BirthOfDateCredential"));
+		assertNull(verifier.findCredential(ISSUER2_DID, "NameCredential"));
+		assertNull(verifier.findCredential(ISSUER2_DID, "BirthOfDateCredential"));
 
 		// other did
 		DidVerifier verifier2 = new DidVerifier(USER2_DID);
-		assertFalse(verifier2.extractCredentialsFromEncryptPresentation(encryptedVP, (RSAPrivateKey)keyPair.getPrivate()));
+		assertFalse(verifier2.extract(encryptedVP, (RSAPrivateKey)keyPair.getPrivate()));
 		
 		// other public key
-		assertFalse(verifier.extractCredentialsFromEncryptPresentation(encryptedVP, (RSAPrivateKey)keyPair2.getPrivate()));
+		assertFalse(verifier.extract(encryptedVP, (RSAPrivateKey)keyPair2.getPrivate()));
 
 		// invalid did
 		try {
@@ -208,7 +261,5 @@ public class DidVerifierTest {
 		catch (DidNotFoundException e) {
 			assertTrue(true);
 		}
-		
-		
 	}
 }
