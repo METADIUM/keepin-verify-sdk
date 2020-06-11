@@ -17,9 +17,11 @@ import java.util.Map;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.coinplug.mykeepin.sdk.verify.CredentialException.ErrorCode;
 import com.coinplug.mykeepin.sdk.verify.PresentationInfo.CredentialInfo;
+import com.coinplug.mykeepin.sdk.verify.exception.CredentialException;
 import com.coinplug.mykeepin.sdk.verify.exception.DidNotFoundException;
+import com.coinplug.mykeepin.sdk.verify.exception.PresentationException;
+import com.coinplug.mykeepin.sdk.verify.exception.CredentialException.ErrorCode;
 import com.coinplug.mykeepin.utils.Bytes;
 import com.coinplug.mykeepin.utils.Hash;
 import com.metadium.vc.VerifiableCredential;

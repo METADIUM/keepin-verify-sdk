@@ -1,4 +1,4 @@
-package com.coinplug.mykeepin.sdk.verify;
+package com.coinplug.mykeepin.sdk.verify.exception;
 
 import com.metadium.vc.VerifiableCredential;
 
