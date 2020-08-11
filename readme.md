@@ -130,6 +130,12 @@ if (verifier.extract(vp, privateKey)) {
 		// claims.get(0).getValue()
 		// claims.get(1).getValue()
 	}
+	catch (IllegalStateException e) {
+		// extract 함수를 호출 하지 않았을 때 발생
+	}
+	catch (PresentationException e) {
+		// 요청한 VP 가 아닌 경우 발생
+	}
 	catch (CredentialException ce) {
 		// 받은 데이터의 오류 처리
 		switch (ce.getErrorCode()) {
