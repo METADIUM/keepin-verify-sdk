@@ -15,7 +15,7 @@
 ```gradle
 // build.gradle
 dependencies {
-	implementation 'com.github.METADIUM:keepin-verify-sdk:0.2.2'
+	implementation 'com.github.METADIUM:keepin-verify-sdk:0.2.3'
 }
 ```
 
@@ -28,7 +28,7 @@ dependencies {
 <dependency>
 	<groupId>com.github.METADIUM</groupId>
 	<artifactId>keepin-verify-sdk</artifactId>
-	<version>0.2.1</version>
+	<version>0.2.3</version>
 </dependency>
 ```
 
