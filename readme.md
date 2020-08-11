@@ -1,16 +1,13 @@
-# MyKeepin SDK Verify for java 
+# Keepin SDK Verify for java 
 
 ## SDK 소개
 
 ## 주요 기능
-+ SP 로서 MyKeepin 앱에 요청한 서명 또는 VP 를 검증
-+ MyKeepin 앱에서 VC 를 발급받기 위해 AA 에게 전달한 VP 검증
++ SP 로서 Keepin 앱에 요청한 서명 또는 VP 를 검증
++ Keepin 앱에서 VC 를 발급받기 위해 AA 에게 전달한 VP 검증
 
 ### SDK 추가
 
-##### Maven repository 설정 <= maven central 에 deploy 전 까지 임시로 사용
-
-[라이브러리](https://bitbucket.org/coinplugin/mykeepin-verify-sdk/downloads/mykeepin-verify-sdk-0.2.1.zip) 다운로드 후 ~/.m2/com/coinplug/mykeepin-verify-sdk/0.2.1 디렉토리에 압축 해제
 
 
 ##### Gradle
@@ -18,7 +15,7 @@
 ```gradle
 // build.gradle
 dependencies {
-	implementation 'com.coinplug:mykeepin-verify-sdk:0.2.1'
+	implementation 'com.github.METADIUM:keepin-verify-sdk:0.2.2'
 }
 ```
 
@@ -29,8 +26,8 @@ dependencies {
 ```xml
 <!-- pom.xml -->
 <dependency>
-	<groupId>com.coinplug</groupId>
-	<artifactId>mykeepin-verify-sdk</artifactId>
+	<groupId>com.github.METADIUM</groupId>
+	<artifactId>keepin-verify-sdk</artifactId>
 	<version>0.2.1</version>
 </dependency>
 ```
@@ -62,91 +59,96 @@ RSAKey key = (RSAKey)JWK.parse(rsaJwk);
 
 ### Auth 서버에서 전달받은 서명검증 및 VC 확인
 
+#### 인증 요청 값 설정
 ```java
 // 미리 설정된 값
 String serviceId = "";                  // 발급된 service id
-RSAPrivateKey privateKey = getPriKey(); // Auth 서버에 등록한 RSA 개인키
+RSAPrivateKey privateKey = getPriKey(); // Keepin 인증 서버에 등록한 RSA 개인키
 
-// 서버에 생성한 값 설정
-String state = "";    // 인증 요청하기 위해 생성한 state
-int type = "";        // 인증 요청한 타입
-String dataHash = ""; // 인증 요청한 data의 hash값
+// Keepin 앱에 인증 요청 시 넘겨준 파라미터
+String state = "";    // 인증 요청하기 위해 생성한 UUID 값
+int type = "";        // 인증 요청한 타입. 서비스 등록한 인증 타입
+String dataHash = ""; // 인증 요청한 data의 hash 값
 
-// 앱에서 전달 받은 code 값 설정
-String code = ""; // 인증 초기화 후 Auth 서버에서 발급한 code 값
+// 인증 요청 후 응답 받은 파라미터
+String code = "";
+```
 
-// Auth 서버에 serviceId, state, code 로 인증 결과 데이터 요청하여 did, signature, vp 를 얻는다.
-// 요청 URL : https://testauth.metadium.com/didauth/v1/verify/${serviceId}/${state+}/${code}
-// https://bitbucket.org/coinplugin/meta-auth-service/src/master/auth/app/docs/api_spec.md#verify-auth-info 참조
-String did = "";
-String signature = "";
-String vp = "";
+#### Keepin 인증 서버에서 사용자 인증 데이터를 획득
+
+요청 URL
+  + BusanKeepin : https://bauth.mykeepin.com/didauth/v1/verify/${serviceId}/${state}/${code}
+  + MyKeepin    : https://testauth.metadium.com/didauth/v1/verify/${serviceId}/${state}/${code}
+
+응답 JSON
+
+```json
+ {
+   "status": 200,
+   "data": {
+     "did": "did:meta:testnet:00000000000000000000000000000000000000000000000000000000000009b4",
+     "vp": "eyJlbmMiOiJBM.....lIV26kw2NCjDV4",
+     "signature": "0xdd99b82c3b4d0825f32707e8d86633379edf65571a1c8a3c4334266a928bac85040b2462d8205192895891c6ebb987f2fa5a576f81e3f23fbe21c86f70adf9ae1c"
+   }
+ }
+```
+
+
+파라미터 설명
+  + did : 인증한 사용자의 DID
+  + vp : 사용자가 전달한 암호화된 데이터
+  + signature : 사용자 서명값   
+
+
+```java
+// 인증서버 API 를 호출 하여 did, vp, signature 값을 설정한다.
+String did = "did:meta:testnet:00000000000000000000000000000000000000000000000000000000000009b4";
+String vp = "eyJlbmMiOiJBM.....lIV26kw2NCjDV4";
+String signature = "0xdd99b82c3b4d0825f32707e8d86633379edf65571a1c8a3c4334266a928bac85040b2462d8205192895891c6ebb987f2fa5a576f81e3f23fbe21c86f70adf9ae1c";
 
 // 사용자 DID 로 검증객체 생성
 DidVerifier verifier = new DidVerifier(did);
 
-// 검증만 필요한 경우 signature 를 검증한다.
+// 사용자 인증 서명값을 검증한다.
 if (!verifier.verifySignaure(serviceId, state, code, type, dataHash, signature)) {
 	// 검증 실패
 	return;
 }
 
-// 전달 받은 VP 를 확인이 필요한 경우 VP 복호화 몇 VP/VC 검증 
-if (verifier.extractCredentialsFromEncryptPresentation(vp, privateKey)) {
-	// 지정한 issuer 와 credential 이름으로 VC 조회. 전체 credential 은 getVerifiableCredentials() 사용.
-	String didOfRequiredAA = "did:meta:0x.....";
-	VerifiableCredential vc1 = verifier.findVerifiableCredential(didOfRequiredAA, "NameCredential");
+// 전달 받은 데이터를 가지고 있는 RSA private key 로 복호화
+if (verifier.extract(vp, privateKey)) {
+	// 추출할 정보 설정
+	String presentaionInfoJsonString = ".."; // 앱 등록 시 전달 받은 presentation json 정보
+	PresentationInfo presentationInfo = new ObjectMapper().readValue(presentaionInfoJsonString,  PresentationInfo.class);
 	
-	// 해당 Credential 의 subject(claim) 은 가져온다.
-	Map<String, String> subject = (Map<String, String>)nameVC.getCredentialSubject();
+	// 요청한 데이터를 얻는다. 순서는 PresentationInfo 에 나열된 순서
+	try {
+		List<ClaimNameValue> claims = verifier.getClaims(presentationInfo, true);
+
 	
-	String name = subject.get("name");
+		// 데이터 가져와서 사용
+		// claims.get(0).getValue()
+		// claims.get(1).getValue()
+	}
+	catch (CredentialException ce) {
+		// 받은 데이터의 오류 처리
+		switch (ce.getErrorCode()) {
+		case NotFoundCredential:
+			// 필요한 인증정보를 포함하고 있지 않음
+			break;
+		case ExpiredCredential:
+			// 전달받은 인증정보가 만료되었음
+			break;
+		case NotFoundClaim:
+			// 요청한 정보의 값이 없음
+			break;
+		case RevokedCredential:
+			// 인증정보가 인증자에 의해 폐기 되었음
+			break;
+		case IssuerServerError:
+			// 인증자 서버에러
+			break;
+		}
+	}
 }
-
-```
-
-### MyKeepin 에서 전달된 VP/VC 검증 및 확인. AA 로 VP 를 전달한 경우
-
-```java
-// MyKeepin 에서 전달 받은 VP
-String receiveVP = "...";
-
-// VP 에서 user DID 확인
-String userDid;
-try {
-	SignedJWT signedVp = SignedJWT.parse(receiveVP);
-	userDid = signedVp.getJWTClaimsSet().getIssuer();
-}
-catch (ParseException e) {
-	// VP 파싱 실패
-	return;
-}
-
-// 사용자 DID 로 검증객체 생성
-DidVerifier verifier = new DidVerifier(userDid);
-
-// VP/VC 검증 
-if (verifier.extractCredentialsFromPresentation(receiveVP)) {
-	// 지정한 issuer 와 credential 이름으로 VC 조회. 전체 credential 은 getVerifiableCredentials() 사용.
-	String didOfRequiredAA = "did:meta:0x.....";
-	VerifiableCredential vc1 = verifier.findVerifiableCredential(didOfRequiredAA, "NameCredential");
-	
-	// 해당 Credential 의 subject(claim) 은 가져온다.
-	Map<String, String> subject = (Map<String, String>)nameVC.getCredentialSubject();
-	
-	String name = subject.get("name");
-}
-
-// 새로운 VC 생성
-VerifiableCredential newVC = new VerifiableCredential();
-newVC.setId(URI.create("http://aa.metadium.com/credential/343"));    // VC 의 ID. URL 로 VC의 유효성을 해당 URL 로 확인할 수 있어야 함.
-newVC.addTypes(Collections.singletonList("NameCredential"));         // AA 에서 정의한 VC 이름. 관리자에도 등록 되어 있어야 함
-newVC.setIssuer(URI.create("did:meta:0x3489384932859420"));          // AA 의 DID
-newVC.setIssuanceDate(issuedDate);                                   // VC 발급일
-newVC.setExpirationDate(expireDate);                                 // VC 만료일
-LinkedHashMap<String, String> subject = new LinkedHashMap<>();
-subject.put("id", "did:meta:0x11111111120");                         // VC 소유자의 DID 
-subject.put("name", "mansud");                                       // VC subject 
-newVC.setCredentialSubject(subject);
-
 ```
