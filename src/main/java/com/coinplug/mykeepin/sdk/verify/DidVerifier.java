@@ -426,9 +426,18 @@ public class DidVerifier {
 			if (useVerifyByIssuer && findVc.getId() != null && findVc.getId().getScheme().startsWith("http")) {
 				HttpURLConnection conn = null;
 				try {
+					if (logger.isDebugEnabled()) {
+						logger.debug("Search credentail to AA. url="+findVc.getId().toURL().toString());
+					}
+					
 					conn = (HttpURLConnection) findVc.getId().toURL().openConnection();
+					conn.setRequestProperty("User-Agent", "Java/DidVerifier");
 					conn.connect();
 					int statusCode = conn.getResponseCode();
+					
+					if (logger.isDebugEnabled()) {
+						logger.debug("url="+findVc.getId().toURL().toString()+" status="+statusCode);
+					}
 					
 					
 					if (statusCode == HttpURLConnection.HTTP_NOT_FOUND) {
@@ -438,10 +447,12 @@ public class DidVerifier {
 						throw new CredentialException(ErrorCode.RevokedCredential, findVc);
 					}
 					else if (statusCode != HttpURLConnection.HTTP_OK) {
+						logger.error("AA server error. status_code="+statusCode);
 						throw new CredentialException(ErrorCode.IssuerServerError, findVc);
 					}
 				}
 				catch (IOException e) {
+					logger.error("AA server error", e);
 					throw new CredentialException(ErrorCode.IssuerServerError, findVc);
 				}
 				finally {
