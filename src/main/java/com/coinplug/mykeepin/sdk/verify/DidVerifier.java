@@ -383,7 +383,7 @@ public class DidVerifier {
 	 * @throws CredentialException   원하는 Credential 이 아니거나 유효하지 않은 경우 발생
 	 * 
 	 */
-	public List<ClaimNameValue<?>> getClaims(PresentationInfo presentationInfo, boolean useVerifyByIssuer) throws PresentationException, CredentialException, IllegalStateException {
+	public List<ClaimNameValue> getClaims(PresentationInfo presentationInfo, boolean useVerifyByIssuer) throws PresentationException, CredentialException, IllegalStateException {
 		if (presentationInfo == null) {
 			return Collections.emptyList();
 		}
@@ -396,7 +396,7 @@ public class DidVerifier {
 			throw new PresentationException("Presentation types not contains "+presentationInfo.name+". "+vp.getType());
 		}
 		
-		List<ClaimNameValue<?>> retValues = new ArrayList<>();
+		List<ClaimNameValue> retValues = new ArrayList<>();
 		Date curDate = new Date();
 		
 		for (CredentialInfo c : presentationInfo.credentials) {
@@ -419,12 +419,7 @@ public class DidVerifier {
 			// check claim
 			Object value = claims.get(c.claimName);
 			if (value == null) {
-				throw new CredentialException(ErrorCode.IssuerServerError, findVc);
-			}
-			
-			// check claim value
-			if (!c.claimValueClass.isInstance(value)) {
-				throw new CredentialException(ErrorCode.MismatchClaimType, findVc);
+				throw new CredentialException(ErrorCode.NotFoundClaim, findVc);
 			}
 			
 			// check id

@@ -7,17 +7,17 @@ package com.coinplug.mykeepin.sdk.verify;
  *
  * @param <T> value 의 타입
  */
-public class ClaimNameValue<T> {
+public class ClaimNameValue {
 	private String name;
-	private T value;
+	private Object value;
 	
 
-	public static <T> ClaimNameValue<T> create(String name, T value) {
-		ClaimNameValue<T> cnv = new ClaimNameValue<T>(name, value);
+	public static ClaimNameValue create(String name, Object value) {
+		ClaimNameValue cnv = new ClaimNameValue(name, value);
 		return cnv;
 	}
 
-	public ClaimNameValue(String name, T value) {
+	public ClaimNameValue(String name, Object value) {
 		this.name = name;
 		this.value = value;
 	}
@@ -27,7 +27,7 @@ public class ClaimNameValue<T> {
 		return name;
 	}
 
-	public T getValue() {
+	public Object getValue() {
 		return value;
 	}
 }

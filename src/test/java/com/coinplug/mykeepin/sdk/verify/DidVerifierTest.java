@@ -122,19 +122,23 @@ public class DidVerifierTest {
     }
     
     private String generateNonce(String serviceId, String state, String code, int type, String data) {
+		// make nonce
 		byte[] packed = Bytes.concat(code.getBytes(StandardCharset.UTF_8),
 				serviceId.getBytes(StandardCharset.UTF_8),
 				Numeric.toBytesPadded(BigInteger.valueOf(type), 32),
-				state.getBytes(StandardCharset.UTF_8),
-				data.getBytes(StandardCharset.UTF_8)
+				state.getBytes(StandardCharset.UTF_8)
 				);
+		
+		if (data != null) {
+			packed = Bytes.concat(packed, data.getBytes(StandardCharset.UTF_8));
+		}
+		
 		byte[] nonce = Hash.sha3(packed);
+
 
 		return Hex.toHexString(nonce);
     }
-    
-    
-    
+
 	@Test
 	public void testVerify() throws DidNotFoundException, IOException, SignatureException {
 		String serviceId = "f7c5b186-41b9-11ea-ab1a-0a0f3ad235f2";
@@ -195,22 +199,20 @@ public class DidVerifierTest {
 		nameVcInfo.attestatorAgencyDid = ISSUER_DID;
 		nameVcInfo.name = "NameCredential";
 		nameVcInfo.claimName = "name";
-		nameVcInfo.claimValueClass = String.class;
 		vcList.add(nameVcInfo);
 		CredentialInfo birthVcInfo = new CredentialInfo();
 		birthVcInfo.attestatorAgencyDid = ISSUER_DID;
 		birthVcInfo.name = "BirthOfDateCredential";
 		birthVcInfo.claimName = "birth";
-		birthVcInfo.claimValueClass = String.class;
 		vcList.add(birthVcInfo);
 		
 		presentationInfo.credentials = vcList;
 		
 		try {
-			List<ClaimNameValue<?>> claims = verifier.getClaims(presentationInfo, true);
+			List<ClaimNameValue> claims = verifier.getClaims(presentationInfo, true);
 			
-			ClaimNameValue<String> nameClaim = (ClaimNameValue<String>) claims.get(0);
-			ClaimNameValue<String> birthClaim = (ClaimNameValue<String>) claims.get(1);
+			ClaimNameValue nameClaim = claims.get(0);
+			ClaimNameValue birthClaim = claims.get(1);
 			
 			assertEquals(nameClaim.getName(), "name");
 			assertEquals(nameClaim.getValue(), "전영배");
@@ -220,8 +222,8 @@ public class DidVerifierTest {
 			presentationInfo = new ObjectMapper().readValue("{\"vp\":\"TestPresentation\",\"vcs\":[{\"did\":\"did:meta:testnet:0000000000000000000000000000000000000000000000000000000000000382\",\"vc\":\"NameCredential\",\"name\":\"name\",\"type\":\"string\"},{\"did\":\"did:meta:testnet:0000000000000000000000000000000000000000000000000000000000000382\",\"vc\":\"BirthOfDateCredential\",\"name\":\"birth\",\"type\":\"string\"}]}",  PresentationInfo.class);
 			claims = verifier.getClaims(presentationInfo, true);
 			
-			nameClaim = (ClaimNameValue<String>) claims.get(0);
-			birthClaim = (ClaimNameValue<String>) claims.get(1);
+			nameClaim = claims.get(0);
+			birthClaim = claims.get(1);
 			
 			assertEquals(nameClaim.getName(), "name");
 			assertEquals(nameClaim.getValue(), "전영배");
@@ -263,3 +265,5 @@ public class DidVerifierTest {
 		}
 	}
 }
+
+
