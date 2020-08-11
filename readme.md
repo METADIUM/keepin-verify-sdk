@@ -6,8 +6,7 @@
 + SP 로서 Keepin 앱에 요청한 서명 또는 VP 를 검증
 + Keepin 앱에서 VC 를 발급받기 위해 AA 에게 전달한 VP 검증
 
-### SDK 추가
-
+## SDK 추가
 
 
 ##### Gradle
@@ -32,7 +31,7 @@ dependencies {
 </dependency>
 ```
 
-### Logging
+## Logging
 
 Logging use slf4j.
 
@@ -43,38 +42,51 @@ Logging use slf4j.
 </logger>
 ```
 
-### Rsa key 준비
+## Keepin과 연동하여 인증 데이터를 받기 위한 RSA key 준비
+
+#### KEY 생성
+
+생성 후 PublicKey 는 서비 정보와 함께 전달하여 인증 서버에 등록해야 한다.  
+
+
+##### Web 에서 생성
+	
+Json Web Key RSA 로 생성. Key Size 2048 Fixed.  
+[Generate Site](https://mkjwk.org/)
+
+##### JavaCode 로 생성
+```java
+RSAKey jwk = new RSAKeyGenerator(2048).generate();
+String rsaJwk = jwk.toJSONString();                     // Private Key
+String rsaPublicJwk = jwk.toPublicJWK().toJSONString(); // Public Key 
+```
+
+
+#### KEY 로딩
 
 [nimbus-jose-java](https://connect2id.com/products/nimbus-jose-jwt) 라이브러리 필요.  
 
 ```java
-// Generate RSA Key. 2048 bit 이상만 지원
-RSAKey jwk = new RSAKeyGenerator(2048).generate();
-String rsaJwk = jwk.toJSONString();                     // SP 서버에서 사용할 Private Key
-String rsaPublicJwk = jwk.toPublicJWK().toJSONString(); // 관리자에 등록한 Public Key 
+RSAKey key = RSAKey.parse("${JWK}");
+RSAPrivateKey = key.toRSAPrivateKey();
 
-// Load RSA key
-RSAKey key = (RSAKey)JWK.parse(rsaJwk);
 ```
 
-### Auth 서버에서 전달받은 서명검증 및 VC 확인
+## 앱에서 Keepin 으로 인증 요청
 
-#### 인증 요청 값 설정
-```java
-// 미리 설정된 값
-String serviceId = "";                  // 발급된 service id
-RSAPrivateKey privateKey = getPriKey(); // Keepin 인증 서버에 등록한 RSA 개인키
+앱 설정 및 연동 방법은 Android/iOS SDK 문서 확인  
+인증 요청 시 아래의 값들이 필요하며 앱이나 서버에서 생성  
 
-// Keepin 앱에 인증 요청 시 넘겨준 파라미터
-String state = "";    // 인증 요청하기 위해 생성한 UUID 값
-int type = "";        // 인증 요청한 타입. 서비스 등록한 인증 타입
-String dataHash = ""; // 인증 요청한 data의 hash 값
+- state : 인증 요청하기 위해 고유한 값. UUID 형식
+- type : 서비스 등록 시 할당 받은 인증 타입. 이 값에 따라 요청하는 데이터가 달라짐.
+- data : 사용자 서명 시 message 에 같이 포함될 값. null 가능
 
-// 인증 요청 후 응답 받은 파라미터
-String code = "";
-```
+사용자가 인증이 완료되면 앱에 code 값을 반환하며 위의 값과 code 값을 서버로 보내어 검증하고 데이터를 획득한다. 
 
-#### Keepin 인증 서버에서 사용자 인증 데이터를 획득
+
+## Keepin 인증 서버에서 사용자 인증 데이터를 획득
+
+앱에서 전달 받은 state, code 값으로 사용자 인증 데이터를 가져온다.
 
 요청 URL
   + BusanKeepin : https://bauth.mykeepin.com/didauth/v1/verify/${serviceId}/${state}/${code}
@@ -99,6 +111,7 @@ String code = "";
   + vp : 사용자가 전달한 암호화된 데이터
   + signature : 사용자 서명값   
 
+## 인증 데이터 검증 및 데이터 추출
 
 ```java
 // 인증서버 API 를 호출 하여 did, vp, signature 값을 설정한다.
@@ -106,11 +119,14 @@ String did = "did:meta:testnet:0000000000000000000000000000000000000000000000000
 String vp = "eyJlbmMiOiJBM.....lIV26kw2NCjDV4";
 String signature = "0xdd99b82c3b4d0825f32707e8d86633379edf65571a1c8a3c4334266a928bac85040b2462d8205192895891c6ebb987f2fa5a576f81e3f23fbe21c86f70adf9ae1c";
 
+String serviceId = "..."; // 서비스 등록 시 할당받은 ID
+RSAPrivate privateKey = ..; // 로드한 RSA private key
+
 // 사용자 DID 로 검증객체 생성
 DidVerifier verifier = new DidVerifier(did);
 
 // 사용자 인증 서명값을 검증한다.
-if (!verifier.verifySignaure(serviceId, state, code, type, dataHash, signature)) {
+if (!verifier.verifySignaure(serviceId, state, code, type, data, signature)) {
 	// 검증 실패
 	return;
 }
@@ -157,4 +173,28 @@ if (verifier.extract(vp, privateKey)) {
 		}
 	}
 }
+```
+
+## PresentationInfo
+
+서비스 등록 후 각 인증 Type 에 대한 Presentation 정보를 json 으로 받을 수 있다.
+
+예제)
+
+```json
+  {
+    "vp": "TestAppContractPresentation",
+    "vcs": [
+      {
+        "did": "did:meta:0000000000000000000000000000000000000000000000000000000000004f82",
+        "vc": "EmailCredential",
+        "name": "email"
+      },
+      {
+        "did": "did:meta:0000000000000000000000000000000000000000000000000000000000004f82",
+        "vc": "MobileNumberCredential",
+        "name": "mobileNumber"
+      }
+    ]
+  }
 ```
