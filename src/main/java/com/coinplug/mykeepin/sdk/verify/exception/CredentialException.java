@@ -32,7 +32,6 @@ public class CredentialException extends Exception {
 		NotFoundCredential,
 		ExpiredCredential,
 		NotFoundClaim,
-		MismatchClaimType,
 		RevokedCredential,
 		IssuerServerError
 		;
