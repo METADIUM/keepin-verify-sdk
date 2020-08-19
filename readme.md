@@ -11,6 +11,18 @@
 
 ##### Gradle
 
+Add root build.gradle
+
+```gradle
+allprojects {
+    repositories {
+        maven { url 'https://jitpack.io' }
+    }
+}
+```
+
+Add dependency
+
 ```gradle
 // build.gradle
 dependencies {
@@ -19,6 +31,17 @@ dependencies {
 ```
 
 ##### Maven
+
+Add the JitPack repository to build file
+
+```xml
+<repositories>
+    <repository>
+        <id>jitpack.io</id>
+        <url>https://jitpack.io</url>
+    </repository>
+</repositories>
+```
 
 아래설정 pom.xml 에 추가
 
