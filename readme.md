@@ -107,34 +107,8 @@ RSAPrivateKey = key.toRSAPrivateKey();
 사용자가 인증이 완료되면 앱에 code 값을 반환하며 위의 값과 code 값을 서버로 보내어 검증하고 데이터를 획득한다. 
 
 
-## Keepin 인증 서버에서 사용자 인증 데이터를 획득
 
-앱에서 전달 받은 state, code 값으로 사용자 인증 데이터를 가져온다.
-
-요청 URL
-  + BusanKeepin : https://bauth.mykeepin.com/didauth/v1/verify/${serviceId}/${state}/${code}
-  + MyKeepin    : https://testauth.metadium.com/didauth/v1/verify/${serviceId}/${state}/${code}
-
-응답 JSON
-
-```json
- {
-   "status": 200,
-   "data": {
-     "did": "did:meta:testnet:00000000000000000000000000000000000000000000000000000000000009b4",
-     "vp": "eyJlbmMiOiJBM.....lIV26kw2NCjDV4",
-     "signature": "0xdd99b82c3b4d0825f32707e8d86633379edf65571a1c8a3c4334266a928bac85040b2462d8205192895891c6ebb987f2fa5a576f81e3f23fbe21c86f70adf9ae1c"
-   }
- }
-```
-
-
-파라미터 설명
-  + did : 인증한 사용자의 DID
-  + vp : 사용자가 전달한 암호화된 데이터
-  + signature : 사용자 서명값   
-
-## 인증 데이터 검증 및 데이터 추출
+## VerifiableCredentail, VerifiablePresentation 검증. (META 만 검증 가능)
 
 ```java
 // 인증서버 API 를 호출 하여 did, vp, signature 값을 설정한다.
