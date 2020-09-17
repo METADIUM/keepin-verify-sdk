@@ -18,7 +18,9 @@ import java.security.SignatureException;
 import java.security.interfaces.ECPrivateKey;
 import java.security.interfaces.RSAPrivateKey;
 import java.security.interfaces.RSAPublicKey;
+import java.text.ParseException;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.Date;
 import java.util.LinkedHashMap;
@@ -115,6 +117,11 @@ public class DidVerifierTest {
 		SignedJWT signedVP = VerifiableSignedJWT.sign(vp, ownerKid, UUID.randomUUID().toString(), new ECDSASigner(ownerPrivateKey));
 		
 		// encrypt jwe
+		if (encryptPublicKey == null) {
+			return signedVP.serialize();
+		}
+		
+		
 		JWEObject jwe = new JWEObject(new JWEHeader(JWEAlgorithm.RSA_OAEP_256, EncryptionMethod.A256CBC_HS512), new Payload(signedVP.serialize()));
 		jwe.encrypt(new RSAEncrypter(encryptPublicKey));
 		
@@ -263,6 +270,65 @@ public class DidVerifierTest {
 		catch (DidNotFoundException e) {
 			assertTrue(true);
 		}
+	}
+	
+	
+	@Test
+	public void testMd() {
+		String serializedVP;
+		try {
+			serializedVP = issueVP(USER_DID, USER_KID, USER_PRIVATE_KEY, ISSUER_DID, ISSUER_KID, ISSUER_PRIVATE_KEY, null);
+		} catch (JOSEException e) {
+			return;
+		}
+		
+		try {
+			// VP 에서 DID 확인
+			SignedJWT signedJWT = SignedJWT.parse(serializedVP);
+			String userDid = signedJWT.getJWTClaimsSet().getIssuer();
+			
+			// DID 가 META 인 경우만 처리
+			if (userDid.startsWith("did:meta:")) {
+				try {
+					DidVerifier verifier = new DidVerifier(userDid);
+					
+					// VP, VC 검증
+					if (!verifier.extract(serializedVP)) {
+						// VP 또는 VC 가 올바르지 않거나 검증 실패
+						return;
+					}
+					
+					List<VerifiableCredential> vcList = verifier.getCredentials();
+					
+					for (VerifiableCredential vc : vcList) {
+						URI issuer = vc.getIssuer();                                                  // VC 발급자. ex) did:meta:0000000...0003343
+						Collection<String> types = vc.getTypes();                                     // verifiable type. ["VerifiableCredentail", "TestCredential"]
+						Date issueDate = vc.getIssunaceDate();                                        // VC 발급일자
+						Date expireDate = vc.getExpriationDate();                                     // VC 만료일자
+						URI id = vc.getId();                                                          // VC 식별자
+						Map<String, Object> subject = (Map<String, Object>)vc.getCredentialSubject(); // VC claims
+//						vc.getCredentialStatusType()
+						
+						subject.get("name");
+						subject.get("birth");
+					}
+				} catch (DidNotFoundException e) {
+					// 존재하지 않는 DID
+					return;
+				} catch (IOException e) {
+					// resolver 와의 통신 에러
+					return;
+				}
+			}
+			
+			
+		} catch (ParseException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+		
+		
+		
 	}
 }
 
