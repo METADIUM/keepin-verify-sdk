@@ -27,7 +27,7 @@ Add dependency
 ```gradle
 // build.gradle
 dependencies {
-	implementation 'com.github.METADIUM:keepin-verify-sdk:0.2.3'
+	implementation 'com.github.METADIUM:keepin-verify-sdk:0.2.4'
 }
 ```
 
@@ -51,7 +51,7 @@ Add the JitPack repository to build file
 <dependency>
 	<groupId>com.github.METADIUM</groupId>
 	<artifactId>keepin-verify-sdk</artifactId>
-	<version>0.2.3</version>
+	<version>0.2.4</version>
 </dependency>
 ```
 
