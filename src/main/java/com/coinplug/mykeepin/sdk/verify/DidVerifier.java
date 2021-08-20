@@ -462,7 +462,7 @@ public class DidVerifier {
 				}
 			}
 			
-			retValues.add(ClaimNameValue.create(c.claimName, value));
+			retValues.add(ClaimNameValue.create(c.name, c.claimName, value));
 		}
 		
 		return retValues;

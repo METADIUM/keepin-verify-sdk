@@ -225,26 +225,30 @@ public class DidVerifierTest {
 		presentationInfo.credentials = vcList;
 		
 		try {
-			List<ClaimNameValue> claims = verifier.getClaims(presentationInfo, true);
+			List<ClaimNameValue> claims = verifier.getClaims(presentationInfo, false);
 			
 			ClaimNameValue nameClaim = claims.get(0);
 			ClaimNameValue birthClaim = claims.get(1);
 			
 			assertEquals(nameClaim.getName(), "name");
 			assertEquals(nameClaim.getValue(), "전영배");
+			assertEquals(nameClaim.getCredentialName(), "NameCredential");
 			assertEquals(birthClaim.getName(), "birth");
 			assertEquals(birthClaim.getValue(), "19770206");
+			assertEquals(birthClaim.getCredentialName(), "BirthOfDateCredential");
 
 			presentationInfo = new ObjectMapper().readValue("{\"vp\":\"TestPresentation\",\"vcs\":[{\"did\":\"did:meta:testnet:0000000000000000000000000000000000000000000000000000000000000382\",\"vc\":\"NameCredential\",\"name\":\"name\",\"type\":\"string\"},{\"did\":\"did:meta:testnet:0000000000000000000000000000000000000000000000000000000000000382\",\"vc\":\"BirthOfDateCredential\",\"name\":\"birth\",\"type\":\"string\"}]}",  PresentationInfo.class);
-			claims = verifier.getClaims(presentationInfo, true);
+			claims = verifier.getClaims(presentationInfo, false);
 			
 			nameClaim = claims.get(0);
 			birthClaim = claims.get(1);
 			
 			assertEquals(nameClaim.getName(), "name");
+			assertEquals(nameClaim.getCredentialName(), "NameCredential");
 			assertEquals(nameClaim.getValue(), "전영배");
 			assertEquals(birthClaim.getName(), "birth");
 			assertEquals(birthClaim.getValue(), "19770206");
+			assertEquals(birthClaim.getCredentialName(), "BirthOfDateCredential");
 
 		}
 		catch (Exception e) {

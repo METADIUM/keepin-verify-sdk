@@ -71,12 +71,16 @@ if (verifier.extract(vp, privateKey)) {
 	
 	// 요청한 데이터를 얻는다. 순서는 PresentationInfo 에 나열된 순서
 	try {
-		List<ClaimNameValue> claims = verifier.getClaims(presentationInfo, true);
+		List<ClaimNameValue> claims = verifier.getClaims(presentationInfo, false);
 
 	
 		// 데이터 가져와서 사용
-		// claims.get(0).getValue()
-		// claims.get(1).getValue()
+		// PresentationInfo 에 나열되어 있는 순서대로 정렬되어 있음
+		String email = claims.get(0).getValue();
+		String mobileNumber = claims.get(1).getValue();
+		
+		// claim 에 대한 Credential 확인
+		String credentialName = claims.get(0).getCredentialName();
 	}
 	catch (IllegalStateException e) {
 		// extract 함수를 호출 하지 않았을 때 발생
