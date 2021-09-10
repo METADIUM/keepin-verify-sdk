@@ -58,7 +58,7 @@ RSAPrivate privateKey = ..; // 로드한 RSA private key
 DidVerifier verifier = new DidVerifier(did);
 
 // 사용자 인증 서명값을 검증한다.
-if (!verifier.verifySignaure(serviceId, state, code, type, data, signature)) {
+if (!verifier.verifySignaureForAuth(serviceId, state, code, type, data, signature)) {
 	// 검증 실패
 	return;
 }
